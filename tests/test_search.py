@@ -14,13 +14,31 @@ def _rec(email, url, password, redactor):
     return ExposureRecord(email, url, "src.txt", "line", redactor.redact(password))
 
 
-def test_scope_matcher():
+def test_scope_matcher_email_domain():
     m = make_scope_matcher(["Client-Domain.com", "@other.net"])
     assert m("a@client-domain.com")
     assert m("b@sub.client-domain.com")
     assert m("c@other.net")
     assert not m("d@notclient.com")
     assert not m("no-at-sign")
+
+
+def test_scope_matcher_includes_service_url_all_providers():
+    # Default (broad): any provider counts if the account is on the client's URL.
+    m = make_scope_matcher(["client.com"])
+    assert m("someone@gmail.com", "https://client.com/login")
+    assert m("user@outlook.com", "https://portal.client.com:8080/app")
+    assert m("x@icloud.com", "https://client.com")
+    # Personal account NOT on the client's service is excluded.
+    assert not m("someone@gmail.com", "https://www.xvideos2.com/")
+    assert not m("someone@gmail.com", "https://notclient.com/login")
+
+
+def test_scope_matcher_strict_mode_email_only():
+    m = make_scope_matcher(["client.com"], include_service_url=False)
+    assert m("staff@client.com", "https://anywhere.com")
+    # URL match is ignored in strict mode.
+    assert not m("someone@gmail.com", "https://client.com/login")
 
 
 def test_dedupe_by_service_and_email():

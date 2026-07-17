@@ -75,23 +75,32 @@ def test_split_line_preserves_not_saved_and_schemes():
 # --------------------------------------------------------------------------- #
 # Scope filtering + block/antipublic parsing
 # --------------------------------------------------------------------------- #
-def _parse(text, domains=("client-domain.com",)):
-    matcher = make_scope_matcher(domains)
+def _parse(text, domains=("client-domain.com",), include_service_url=True):
+    matcher = make_scope_matcher(domains, include_service_url=include_service_url)
     return list(parse_text(text, "src.txt", Redactor(salt=b"fixed-salt"), matcher))
 
 
-def test_only_in_scope_by_email_domain():
-    text = "\n".join(
-        [
-            "https://mail.google.com/:jane@client-domain.com:S3cretPassw0rd!",
-            "https://mail.google.com/:outsider@gmail.com:whatever123",
-            # in URL only, not the email -> must NOT be included
-            "https://client-domain.com/login:bob@othercorp.com:Zzzz9999",
-        ]
-    )
-    records = _parse(text)
+_SCOPE_TEXT = "\n".join(
+    [
+        "https://mail.google.com/:jane@client-domain.com:S3cretPassw0rd!",
+        # unrelated personal account on an unrelated site -> excluded in both modes
+        "https://mail.google.com/:outsider@gmail.com:whatever123",
+        # personal provider but ON the client's service -> included only in broad mode
+        "https://client-domain.com/login:bob@gmail.com:Zzzz9999",
+    ]
+)
+
+
+def test_strict_mode_email_domain_only():
+    records = _parse(_SCOPE_TEXT, include_service_url=False)
+    assert {r.email for r in records} == {"jane@client-domain.com"}
+
+
+def test_broad_mode_includes_client_service_any_provider():
+    records = _parse(_SCOPE_TEXT)  # broad is the default
     emails = {r.email for r in records}
-    assert emails == {"jane@client-domain.com"}
+    assert emails == {"jane@client-domain.com", "bob@gmail.com"}
+    assert "outsider@gmail.com" not in emails  # unrelated site stays excluded
 
 
 def test_subdomain_in_scope():

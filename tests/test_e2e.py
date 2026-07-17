@@ -16,8 +16,10 @@ from cytadel.search import analyze, export_csv, make_scope_matcher
 DOMAIN = "client-domain.com"
 IN_SCOPE_EMAIL = "jane@client-domain.com"
 IN_SCOPE_EMAIL_2 = "john@client-domain.com"
+IN_SCOPE_GMAIL = "bob@gmail.com"  # personal provider, but on the client's service
 SECRET_1 = "S3cretPassw0rd!"
 SECRET_2 = "An0therHardPw#9"
+SECRET_3 = "GmailOnSite#7"
 OUT_OF_SCOPE_SECRET = "outsiderPW12345"
 
 
@@ -26,10 +28,10 @@ def _build_sample_zip(path):
         [
             f"https://mail.google.com/:{IN_SCOPE_EMAIL}:{SECRET_1}",
             f"https://vpn.acme.io/login:{IN_SCOPE_EMAIL_2}:{SECRET_2}",
-            # out of scope (different domain) — must not appear
+            # personal provider on the CLIENT's service -> included (broad mode)
+            f"https://client-domain.com/app:{IN_SCOPE_GMAIL}:{SECRET_3}",
+            # unrelated personal account on an unrelated site -> excluded
             f"https://mail.google.com/:outsider@gmail.com:{OUT_OF_SCOPE_SECRET}",
-            # in-URL only, not the client's email — must not be included
-            f"https://client-domain.com/app:someone@elsewhere.org:{OUT_OF_SCOPE_SECRET}",
         ]
     )
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -43,15 +45,15 @@ def test_end_to_end_no_plaintext(tmp_path):
     extract_dir = tmp_path / "extracted"
     safe_extract(str(archive), str(extract_dir))
 
-    in_scope = make_scope_matcher([DOMAIN])
+    in_scope = make_scope_matcher([DOMAIN])  # broad: email domain OR client service
     records = list(scan_tree(str(extract_dir), Redactor(), in_scope))
     records = analyze(records)
 
     emails = {r.email for r in records}
     assert IN_SCOPE_EMAIL in emails
     assert IN_SCOPE_EMAIL_2 in emails
-    assert "outsider@gmail.com" not in emails
-    assert "someone@elsewhere.org" not in emails
+    assert IN_SCOPE_GMAIL in emails  # any-provider account on the client's service
+    assert "outsider@gmail.com" not in emails  # unrelated site stays out
 
     pdf_path = tmp_path / "report.pdf"
     build_pdf(
@@ -72,7 +74,7 @@ def test_end_to_end_no_plaintext(tmp_path):
     assert IN_SCOPE_EMAIL.encode() in csv_bytes
 
     # (b) NO plaintext password anywhere
-    for secret in (SECRET_1, SECRET_2, OUT_OF_SCOPE_SECRET):
+    for secret in (SECRET_1, SECRET_2, SECRET_3, OUT_OF_SCOPE_SECRET):
         assert secret.encode() not in pdf_bytes, f"plaintext leaked into PDF: {secret}"
         assert secret.encode() not in csv_bytes, f"plaintext leaked into CSV: {secret}"
 

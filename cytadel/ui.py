@@ -96,11 +96,18 @@ class Worker(QObject):
     finished = Signal(list, object)  # records, ExposureSummary
     failed = Signal(str)
 
-    def __init__(self, input_path: str, is_archive: bool, domains: List[str]):
+    def __init__(
+        self,
+        input_path: str,
+        is_archive: bool,
+        domains: List[str],
+        include_service_url: bool = True,
+    ):
         super().__init__()
         self._input_path = input_path
         self._is_archive = is_archive
         self._domains = domains
+        self._include_service_url = include_service_url
         self._temp_dir: Optional[str] = None
 
     @property
@@ -127,7 +134,9 @@ class Worker(QObject):
                     self.progress.emit(f"  ANASHKALUAR ({reason}): {name}")
                 scan_root = self._temp_dir
 
-            in_scope = make_scope_matcher(self._domains)
+            in_scope = make_scope_matcher(
+                self._domains, include_service_url=self._include_service_url
+            )
             redactor = Redactor()
             self.progress.emit("Duke skanuar loget për ekspozim brenda domeneve…")
 
@@ -245,14 +254,22 @@ class MainWindow(QWidget):
         self.opt_strength.setChecked(True)
         self.opt_reuse = QCheckBox("Sinjalizo fjalëkalime të ripërdorura (hash i kripur)")
         self.opt_reuse.setChecked(True)
+        self.opt_all_providers = QCheckBox(
+            "Përfshi llogaritë e shërbimit me çdo provider (gmail, outlook, etj.)"
+        )
+        self.opt_all_providers.setChecked(True)
         note = QLabel(
-            "Të dyja janë vetëm sinjale të redaktuara. Fjalëkalimi kurrë nuk "
-            "ruhet, shfaqet ose eksportohet."
+            "Strengtha/ripërdorimi janë vetëm sinjale të redaktuara — fjalëkalimi "
+            "kurrë nuk ruhet, shfaqet ose eksportohet. Kur opsioni i tretë është "
+            "i ndezur, përfshihen edhe llogaritë (çdo provider) të përdorura në "
+            "URL-në/shërbimin e klientit; kur është i fikur, vetëm email-at "
+            "@domeni-i-klientit."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color:#9A929C; font-size:11px;")
         opt_lay.addWidget(self.opt_strength)
         opt_lay.addWidget(self.opt_reuse)
+        opt_lay.addWidget(self.opt_all_providers)
         opt_lay.addWidget(note)
         opt_lay.addStretch(1)
         mid.addWidget(opt_box, 1)
@@ -353,7 +370,12 @@ class MainWindow(QWidget):
         self.progress.setVisible(True)
 
         self._thread = QThread()
-        self._worker = Worker(self._input_path, self._is_archive, self._domains())
+        self._worker = Worker(
+            self._input_path,
+            self._is_archive,
+            self._domains(),
+            include_service_url=self.opt_all_providers.isChecked(),
+        )
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
         self._worker.progress.connect(self._append_log)

@@ -53,7 +53,7 @@ NOISE_KEYS = frozenset({"browser", "application", "soft", "software", "profile"}
 _BLOCK_SEP_CHARS = frozenset("-_~=")
 _UNKNOWN_SERVICE = "(panjohur)"
 
-InScope = Callable[[str], bool]
+InScope = Callable[..., bool]  # (email, url="") -> bool
 
 
 @dataclass(frozen=True)
@@ -152,7 +152,7 @@ def _finish_block(
     password = block.get("pass")
     if not user or not password:
         return None
-    if not in_scope(user):
+    if not in_scope(user, block.get("url") or ""):
         return None
     return ExposureRecord(
         email=user,
@@ -211,14 +211,14 @@ def parse_lines(
             if parsed is None:
                 continue
             url, username, password = parsed
-            if password and in_scope(username):
+            if password and in_scope(username, url):
                 yield ExposureRecord(
                     username, url, source_file, "line", redactor.redact(password)
                 )
         elif "@" in key:
             email = key.strip()
             password = value  # remainder after the first ':'
-            if password and in_scope(email):
+            if password and in_scope(email, "ANTIPUBLIC"):
                 yield ExposureRecord(
                     email, "ANTIPUBLIC", source_file, "antipublic",
                     redactor.redact(password),

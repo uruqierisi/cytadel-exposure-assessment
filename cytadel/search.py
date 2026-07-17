@@ -27,12 +27,40 @@ CSV_HEADER = [
 REQUIRED_ACTION = "Reset i menjëhershëm + MFA"
 
 
-def make_scope_matcher(domains: Iterable[str]):
-    """Build a predicate matching emails whose domain is a client domain.
+def _host_of(url: str) -> str:
+    """Extract the host from a service URL (scheme/userinfo/port/path stripped)."""
+    u = (url or "").strip().lower()
+    i = u.find("://")
+    if i != -1:
+        u = u[i + 3:]
+    at = u.find("@")
+    slash = u.find("/")
+    if at != -1 and (slash == -1 or at < slash):
+        u = u[at + 1:]
+    for sep in ("/", ":", "?", "#"):
+        j = u.find(sep)
+        if j != -1:
+            u = u[:j]
+    return u
 
-    Matches an exact domain or any subdomain of it (``user@mail.client.com``
-    counts for ``client.com``). Case-insensitive. A leading ``@`` on a supplied
-    domain is tolerated.
+
+def _domain_matches(host: str, normalized) -> bool:
+    return any(host == d or host.endswith("." + d) for d in normalized)
+
+
+def make_scope_matcher(domains: Iterable[str], include_service_url: bool = True):
+    """Build a predicate deciding whether a record is in the client's scope.
+
+    A record matches when the **email domain** is a client domain (exact or a
+    subdomain of it — ``user@mail.client.com`` counts for ``client.com``).
+
+    When ``include_service_url`` is True (default), a record ALSO matches when
+    the **service URL's host** is a client domain — so accounts on the client's
+    own service are included regardless of the email provider (gmail, outlook,
+    hotmail, yahoo, icloud, …). Set it False to restrict strictly to the client
+    email domain. Case-insensitive; a leading ``@`` on a supplied domain is
+    tolerated. This changes *which redacted records appear* only — plaintext is
+    never emitted in either mode.
     """
     normalized = {
         d.strip().lower().lstrip("@")
@@ -40,13 +68,16 @@ def make_scope_matcher(domains: Iterable[str]):
         if d and d.strip()
     }
 
-    def matcher(email: str) -> bool:
+    def matcher(email: str, url: str = "") -> bool:
         e = (email or "").strip().lower()
         at = e.rfind("@")
-        if at == -1:
-            return False
-        domain = e[at + 1:]
-        return any(domain == d or domain.endswith("." + d) for d in normalized)
+        if at != -1 and _domain_matches(e[at + 1:], normalized):
+            return True
+        if include_service_url and url:
+            host = _host_of(url)
+            if host and _domain_matches(host, normalized):
+                return True
+        return False
 
     return matcher
 

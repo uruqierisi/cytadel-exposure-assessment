@@ -226,8 +226,9 @@ def _description_page(story, styles, meta, domains, records):
     domain_str = ", ".join(domains) if domains else "domenin e klientit"
     story.append(
         Paragraph(
-            "Ky raport dokumenton llogaritë e personelit të "
-            f"<b>{_esc(meta.client)}</b> të gjetura të ekspozuara në loge të "
+            "Ky raport dokumenton llogaritë e ekspozuara të lidhura me "
+            f"<b>{_esc(meta.client)}</b> (personel dhe përdorues të shërbimeve të "
+            "tij) të gjetura në loge të "
             "malware-it infostealer dhe burime të tjera komprometimi. Për arsye "
             "ligjore (minimizimi i të dhënave, GDPR) dhe sigurie, raporti nuk "
             "përmban fjalëkalime në tekst të thjeshtë — vetëm statusin e tyre të "
