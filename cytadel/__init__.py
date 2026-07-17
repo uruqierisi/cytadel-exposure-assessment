@@ -6,4 +6,4 @@ redaction signals (see ``redact.py``). This is what keeps the tool lawful under
 GDPR data-minimization and safe to hand to a client.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"

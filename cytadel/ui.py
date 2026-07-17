@@ -50,6 +50,14 @@ from .search import (
     summarize,
 )
 
+# On Linux (e.g. Kali) the native GTK file dialog can crash the process; use
+# Qt's own dialog there. Native dialogs stay on Windows/macOS where they're fine.
+_NON_NATIVE_DIALOG = (
+    QFileDialog.Option.DontUseNativeDialog
+    if sys.platform.startswith("linux")
+    else QFileDialog.Option(0)
+)
+
 AUTHORIZED_USE_NOTICE = (
     "NJOFTIM PËR PËRDORIM TË AUTORIZUAR\n\n"
     "Ky është një mjet mbrojtës CTI për njoftim shkeljesh. Përdoret VETËM "
@@ -301,7 +309,8 @@ class MainWindow(QWidget):
     # -- input pickers --------------------------------------------------- #
     def _pick_archive(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
-            self, "Zgjidh arkivin", "", "Arkiva (*.zip *.7z *.rar);;Të gjithë (*.*)"
+            self, "Zgjidh arkivin", "", "Arkiva (*.zip *.7z *.rar);;Të gjithë (*.*)",
+            options=_NON_NATIVE_DIALOG,
         )
         if path:
             self._input_path = path
@@ -309,7 +318,9 @@ class MainWindow(QWidget):
             self.path_label.setText(path)
 
     def _pick_folder(self) -> None:
-        path = QFileDialog.getExistingDirectory(self, "Zgjidh dosjen e logeve")
+        path = QFileDialog.getExistingDirectory(
+            self, "Zgjidh dosjen e logeve", "", options=_NON_NATIVE_DIALOG
+        )
         if path:
             self._input_path = path
             self._is_archive = False
@@ -412,7 +423,8 @@ class MainWindow(QWidget):
 
     def _save_pdf(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
-            self, "Ruaj PDF", self._default_name("pdf"), "PDF (*.pdf)"
+            self, "Ruaj PDF", self._default_name("pdf"), "PDF (*.pdf)",
+            options=_NON_NATIVE_DIALOG,
         )
         if not path:
             return
@@ -424,7 +436,8 @@ class MainWindow(QWidget):
 
     def _save_csv(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
-            self, "Eksporto CSV", self._default_name("csv"), "CSV (*.csv)"
+            self, "Eksporto CSV", self._default_name("csv"), "CSV (*.csv)",
+            options=_NON_NATIVE_DIALOG,
         )
         if not path:
             return
@@ -453,8 +466,25 @@ class MainWindow(QWidget):
         super().closeEvent(event)
 
 
+def _install_excepthook() -> None:
+    """Show unhandled Python errors instead of letting the window close silently."""
+    import traceback
+
+    def hook(exc_type, exc, tb):
+        text = "".join(traceback.format_exception(exc_type, exc, tb))
+        sys.stderr.write(text)
+        sys.stderr.flush()
+        try:
+            QMessageBox.critical(None, "Gabim i papritur", text[-2000:])
+        except Exception:
+            pass
+
+    sys.excepthook = hook
+
+
 def run_app() -> int:
     app = QApplication.instance() or QApplication(sys.argv)
+    _install_excepthook()
     app.setStyleSheet(_DARK_QSS)
     icon_path = asset_path("logo_white.png")
     if os.path.exists(icon_path):
