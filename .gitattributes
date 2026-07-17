@@ -1,0 +1,5 @@
+# Normalize line endings so shell scripts work on Linux (Kali) after checkout.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.ico binary
+*.png binary
