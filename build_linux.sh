@@ -18,13 +18,10 @@ echo "=== Running tests ==="
 python -m pytest -q
 
 echo "=== Building single-file binary with PyInstaller ==="
-# On Linux --add-data uses ':' as the separator (not ';' like Windows).
-# --icon is a Windows/macOS concept and is omitted here.
-pyinstaller --noconfirm --onefile --windowed \
-  --add-data "assets:assets" \
-  --name CytadelExposure \
-  --collect-submodules reportlab \
-  main.py
+# Uses CytadelExposure-linux.spec, which drops the bundled GLib so the system
+# GLib is used (prevents "undefined symbol: g_task_set_static_name" segfaults
+# on newer distros like Kali).
+pyinstaller --noconfirm CytadelExposure-linux.spec
 
 echo
 echo "=== Build complete: dist/CytadelExposure ==="

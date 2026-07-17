@@ -26,11 +26,7 @@ jobs:
         run: python -m pytest -q
       - name: Build Linux binary
         run: |
-          pyinstaller --noconfirm --onefile --windowed \
-            --add-data "assets:assets" \
-            --name CytadelExposure \
-            --collect-submodules reportlab \
-            main.py
+          pyinstaller --noconfirm CytadelExposure-linux.spec
           mv dist/CytadelExposure dist/CytadelExposure-linux-x86_64
       - name: Attach to release
         uses: softprops/action-gh-release@v2

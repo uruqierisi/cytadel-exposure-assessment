@@ -13,8 +13,12 @@ faulthandler.enable()
 # into a text field — the app "just closes" the moment you type. Disable the Qt
 # IME unless the user explicitly set one; plain ASCII keyboard input (domains,
 # emails) works fine without it. Must be set before QApplication is created.
-if sys.platform.startswith("linux") and not os.environ.get("QT_IM_MODULE"):
-    os.environ["QT_IM_MODULE"] = "none"
+if sys.platform.startswith("linux"):
+    os.environ.setdefault("QT_IM_MODULE", "none")
+    # Use an in-process GSettings backend instead of dconf, whose system module
+    # can be ABI-mismatched against the runtime GLib on some distros (Kali) and
+    # spam load errors. The report/UI don't rely on system GTK settings.
+    os.environ.setdefault("GSETTINGS_BACKEND", "memory")
 
 
 def main() -> int:

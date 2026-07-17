@@ -14,6 +14,8 @@ venv/
 build/
 dist/
 *.spec
+# keep the hand-written Linux build spec (the generated *.spec stays ignored)
+!CytadelExposure-linux.spec
 
 # OS / editor
 .DS_Store
