@@ -119,13 +119,72 @@ sudo apt install -y libxcb-cursor0
 
 1. **Source** — pick a `.zip` / `.7z` / `.rar` archive, or a folder of already
    extracted logs.
-2. **Scope** — enter the client domain(s), comma-separated.
+2. **Scope** — enter the client domain(s), comma-separated (e.g.
+   `client.com, client.net`).
 3. **Metadata** — client name, report ID, date, prepared-by, classification
    (all pre-filled and editable).
-4. **Options** — password-strength hint and reuse flagging (both redacted-only).
+4. **Options** — password-strength hint, reuse flagging, and "include the
+   client's service accounts on any provider" (all redacted-only).
 5. **Run** — watch progress and the live log, then review the exposure summary
    and redacted grid.
 6. **Save PDF** / **Export CSV** — both contain redacted status only.
+
+### Supported log formats
+
+The parser auto-detects, in a single pass:
+
+- **Block format** — `SOFT:` / `URL:` (or `Host:`) / `USER:` (or `Login:`) /
+  `PASS:` (or `Password:`) blocks, delimited by a **blank line**, a run of
+  `- _ ~ =`, or simply the next block's `URL:` line.
+- **Line format** — `url:username:password` (one credential per line, incl.
+  `https://site.com:email@provider.com:password` and `android://…` entries).
+- **Combolist / ANTIPUBLIC** — `email:password` lines.
+
+### Scope is intentional — why a scan can return "0 accounts"
+
+A record is included **only** when it belongs to a client domain you entered:
+either the **email domain** (`user@client.com`) or, when the third option is
+enabled, the **service URL host** (an account on the client's own site, on any
+email provider). This scope limit is the GDPR-data-minimization safeguard — the
+tool reports **your client's** exposure, not everyone else's in the log.
+
+So a scan of a large dump can legitimately return **0** if none of the entries
+belong to the domain you typed. When testing, enter a domain that actually
+appears in the data.
+
+## Përdorimi (Shqip)
+
+Mjet **mbrojtës** CTI për njoftim shkeljesh — vetëm për klientë të autorizuar
+dhe vetëm për domenet e tyre. Nuk shkruan kurrë fjalëkalime në tekst të thjeshtë
+(GDPR).
+
+**Hapat:**
+
+1. **Burimi** — zgjidh një arkiv `.zip` / `.7z` / `.rar`, ose një dosje me loge
+   të shpaketuara.
+2. **Domeni(et) e klientit** — shkruaji të ndara me presje (p.sh.
+   `client.com, client.net`).
+3. **Metadata e raportit** — emri i klientit, ID, data, përgatitur nga,
+   klasifikimi (të parambushura, të ndryshueshme).
+4. **Opsionet** — sinjali i fuqisë, ripërdorimi, dhe **"Përfshi llogaritë e
+   shërbimit me çdo provider"** (mbaje të ndezur që të përfshihen llogaritë
+   gmail/outlook/yahoo të përdorura në shërbimin e klientit).
+5. **Ekzekuto vlerësimin** — ndiq progresin, pastaj shiko përmbledhjen dhe
+   tabelën e redaktuar.
+6. **Ruaj PDF** / **Eksporto CSV** — të dyja përmbajnë vetëm status të redaktuar.
+
+**Formatet e mbështetura:** blloqe `SOFT/URL/USER/PASS` (të ndara me rresht bosh,
+me vija `- _ ~ =`, ose pa ndarës); rreshta `url:user:password`; combolista
+`email:password`.
+
+**Pse mund të dalë "0 llogari":** rekordi përfshihet **vetëm** nëse i përket
+domenit të klientit që fute (email `@domeni` ose hosti i URL-së). Ky është
+kufizimi mbrojtës (GDPR). Nëse asnjë hyrje s'i përket domenit tënd, rezultati
+është 0 — normale. Për test, fut një domen që ekziston vërtet në loge.
+
+**Nëse dritarja del më e madhe se ekrani (VM):** përmbajtja tani ka scroll dhe
+madhësia kufizohet sipas ekranit; nëse fontet dalin keq, provo
+`QT_SCALE_FACTOR=1 python main.py`.
 
 ## Safe extraction
 
