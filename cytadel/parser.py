@@ -87,16 +87,19 @@ def split_line(line: str) -> Optional[Tuple[str, str, str]]:
     rest = line[scheme_end:]
 
     slash = rest.find("/")
-    at = rest.find("@")
 
-    if at != -1 and (slash == -1 or at < slash):
-        # userinfo '@' before any path -> separator is first ':' after the '@'.
-        sep = rest.find(":", at + 1)
-    elif slash != -1:
-        # a path exists -> separator is the first ':' at/after the path.
+    if slash != -1:
+        # A path exists -> the credential separator is the first ':' at/after the
+        # path. Any '@' before the path belongs to the URL itself (e.g. an
+        # android:// package token) and is kept as part of the URL.
         sep = rest.find(":", slash)
     else:
-        # no path and no userinfo '@' -> disambiguate by colon count.
+        # No path -> rest is 'host[:port]:user:pass'; disambiguate host:port from
+        # the user separator by colon count. We deliberately do NOT treat '@' as
+        # URL userinfo: in stealer 'url:user:pass' lines the '@' is part of the
+        # email username (e.g. https://site.com:user@gmail.com:pw), not URL
+        # userinfo. Keying off it mis-split the URL and dropped the password on
+        # the most common combolist/stealer shape (no path + email username).
         sep = _sep_by_colon_count(rest)
 
     if sep == -1:

@@ -43,6 +43,32 @@ def test_split_line_examples(line, url, user, password):
     assert split_line(line) == (url, user, password)
 
 
+@pytest.mark.parametrize(
+    "line, url, user, password",
+    [
+        # No path + email username: the '@' must NOT be read as URL userinfo.
+        (
+            "https://shop.client.com:user@gmail.com:abcd1234",
+            "https://shop.client.com",
+            "user@gmail.com",
+            "abcd1234",
+        ),
+        # No path + host:port + email username.
+        (
+            "https://site.com:8080:user@x.com:pw",
+            "https://site.com:8080",
+            "user@x.com",
+            "pw",
+        ),
+    ],
+)
+def test_split_line_email_username_no_path(line, url, user, password):
+    # Regression: these lines used to lose their password (parsed as "") because
+    # the email '@' was mistaken for URL userinfo, so the record was dropped and
+    # scans came back with zero accounts.
+    assert split_line(line) == (url, user, password)
+
+
 def test_split_line_ip_with_port():
     # 3+ colons, segment between colon1/colon2 is a port -> split at colon2.
     assert split_line("https://1.2.3.4:8080:user:pass") == (
