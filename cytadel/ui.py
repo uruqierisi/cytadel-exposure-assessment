@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -30,6 +31,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -168,7 +170,18 @@ class MainWindow(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle(f"Cytadel Exposure Assessment v{__version__}")
-        self.resize(1040, 820)
+        # Clamp the initial size to the available screen. On a small (VM) display
+        # a fixed 1040x820 pushed the Run button, results table, and export
+        # buttons off-screen with no way to reach them. The content itself lives
+        # in a scroll area (see _build_ui), so a smaller window stays fully usable.
+        self.setMinimumSize(360, 420)
+        width, height = 1040, 820
+        screen = QApplication.primaryScreen()
+        if screen is not None:
+            avail = screen.availableGeometry()
+            width = min(width, avail.width() - 40)
+            height = min(height, avail.height() - 80)
+        self.resize(max(width, 360), max(height, 420))
 
         icon_path = asset_path("logo_white.png")
         if os.path.exists(icon_path):
@@ -186,7 +199,20 @@ class MainWindow(QWidget):
 
     # -- construction ---------------------------------------------------- #
     def _build_ui(self) -> None:
-        root = QVBoxLayout(self)
+        # The whole form lives inside a scroll area so every control stays
+        # reachable on small / VM screens even when the window is shorter than
+        # the content. The outer layout holds only the scroll area.
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        outer.addWidget(scroll)
+
+        content = QWidget()
+        scroll.setWidget(content)
+        root = QVBoxLayout(content)
 
         logo_path = asset_path("logo_white.png")
         if os.path.exists(logo_path):
