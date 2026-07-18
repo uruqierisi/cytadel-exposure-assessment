@@ -158,6 +158,53 @@ def test_block_format_parsed():
     assert rec.fmt == "block"
 
 
+def test_blocks_separated_by_blank_lines():
+    # Regression: real stealer logs delimit records with blank lines, not dashes.
+    # These used to collapse into a single block (only the first triple kept).
+    text = "\n".join(
+        [
+            "SOFT: Chrome",
+            "URL: https://accounts.google.com/",
+            "USER: alice@client-domain.com",
+            "PASS: NVW",
+            "",
+            "SOFT: Chrome",
+            "URL: https://portal.client-domain.com/login",
+            "USER: bob@gmail.com",
+            "PASS: Zzzz9999",
+            "",
+            "SOFT: Chrome",
+            "URL: https://sso.other.org/",
+            "USER: carol@other.org",
+            "PASS: nope",
+        ]
+    )
+    records = _parse(text)
+    emails = {r.email for r in records}
+    assert emails == {"alice@client-domain.com", "bob@gmail.com"}
+    assert "carol@other.org" not in emails  # out of scope, correctly excluded
+
+
+def test_blocks_with_no_separator_between_them():
+    # Some dumps have no blank line or dashes at all; a repeated key (a second
+    # URL:) marks the start of the next record.
+    text = "\n".join(
+        [
+            "URL: https://a.client-domain.com/",
+            "USER: one@client-domain.com",
+            "PASS: pw1pw1pw1",
+            "URL: https://b.client-domain.com/",
+            "USER: two@client-domain.com",
+            "PASS: pw2pw2pw2",
+        ]
+    )
+    records = _parse(text)
+    assert {r.email for r in records} == {
+        "one@client-domain.com",
+        "two@client-domain.com",
+    }
+
+
 def test_antipublic_line():
     text = "carol@client-domain.com:HunterHunter2"
     records = _parse(text)

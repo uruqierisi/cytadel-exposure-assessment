@@ -186,7 +186,11 @@ def parse_lines(
     for raw in lines:
         stripped = raw.strip()
 
-        if _is_block_separator(stripped):
+        # A blank line or a run of separator chars both terminate a block. Real
+        # stealer logs delimit records with EITHER a run of ``- _ ~ =`` OR simply
+        # a blank line between blocks; treating only the dashes as a separator
+        # merged every block into one and lost all but the first credential.
+        if not stripped or _is_block_separator(stripped):
             rec = _finish_block(block, source_file, redactor, in_scope)
             block = {}
             if rec is not None:
@@ -205,7 +209,17 @@ def parse_lines(
 
         slot = _slot_for(norm)
         if slot is not None:
-            block.setdefault(slot, value)
+            # A slot that is already filled means a new record started without an
+            # explicit separator (some dumps have no blank line or dashes between
+            # blocks). Flush the current block and begin a fresh one with this
+            # field so consecutive ``URL/USER/PASS`` triples don't collapse into
+            # one via ``setdefault`` keeping only the first value.
+            if slot in block:
+                rec = _finish_block(block, source_file, redactor, in_scope)
+                block = {}
+                if rec is not None:
+                    yield rec
+            block[slot] = value
             continue
 
         # Not a block field -> standalone line-format or ANTIPUBLIC record.
